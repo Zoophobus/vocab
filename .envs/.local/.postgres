@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=vocabulary_learner_db
+POSTGRES_USER=fiiRAqZTXQGvuSCORFiuIGGbdZWrPboo
+POSTGRES_PASSWORD=d2GXkP9HzXHaJxv37QDEsD0XaDEvTzVaVSqg08JMVSdVPflczuzx5BWQvQPcNj9r

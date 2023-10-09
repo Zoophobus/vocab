@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        {% load static %}
+        <link rel="stylesheet" type="text/css" href="{% static 'learn/style.css' %}">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title> The vocabulary </title>
+    </head>
+    <body>
+        <div class="grid-index">
+            <div class="index-add">
+                <h3> Add translations to the database! </h3>
+                <!-- the div region for adding translations -->
+                {% if status %}
+                <p> Translation successfully added </p>
+                {% elif status == False %}
+                <p> Translation not added </p>
+                {% endif %}
+
+                {% if recent %}
+                <h3> Translations (examples from most recent additions).</h3>
+                    <ul>
+                        {% for translation in recent %}
+                        <li> {{ translation }} </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p> No translations are available </p>
+                {% endif %}
+            </div>
+
+            <div class="index-links">
+                <!-- div region for navigation links -->
+                <h3> Navigation options (remove translations not yet implemented)</h3>
+                <form action="/options/" method="GET">
+                    <input type="submit" name="learn_vocabulary" value="Learn your vocabulary">
+                    <input type="submit" name="test_vocabulary" value="Test your vocabulary">
+                    <input type="submit" name="remove_translation" value="Remove a translation">
+                    <input type="submit" name="add" value="Add a noun/adjective/adverb">
+                    <input type="submit" name="add_verb" value="Add a verb">
+                </form>
+            </div>
+
+            <div class="index-list">
+                <!-- div region for the last added translations -->
+            </div>
+        </div> <!-- end of grid-index div -->
+    </body>
+</html>
+

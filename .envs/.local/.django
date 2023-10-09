@@ -1,0 +1,5 @@
+# General
+# ------------------------------------------------------------------------------
+USE_DOCKER=yes
+IPYTHONDIR=/app/.ipython
+SECRET_KEY='django-insecure-&zz4js%az6q79_1r4@qs&51)rvy=(q^b@(523y)tkg2hi%7qao'

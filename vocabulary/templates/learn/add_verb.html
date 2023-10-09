@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        {% load static %}
+        <link rel="stylesheet" type="text/css" href="{% static 'learn/style.css' %}">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title> The vocabulary </title>
+        <style>
+            section.verb {
+                display: block;
+                border: 4px double #9ab2f6;
+            }
+            section.translation {
+                display: block;
+                border: 4px double #6aa2eb;
+            }
+        </style>
+    
+    </head>
+    <body>
+        <div class="grid-index">
+            <div class="index-add">
+                <h3> Add translations to the database! </h3>
+                <!-- the div region for adding translations -->
+
+                <form action="/add_verb/" method="POST">
+                    {% csrf_token %}
+                    <section class="translation">
+                        <h3> Infinitive </h3>
+                        <table>
+                            {{ language_a.as_table }}
+                        </table>
+                        <table>
+                            {{ language_b.as_table }}
+                        </table>
+                        <table>
+                            {{ group.as_table }}
+                        </table>
+                    </section>
+                    <section class="verb">
+                        <h3> Simple present tense </h3>
+                        <table>
+                            {{ SimplePresent.as_table }}
+                        </table>
+                    </section>
+                    <section class="verb">
+                        <h3> Present perfect tense </h3>
+                        <table>
+                            {{ PresentPerfect.as_table }}
+                        </table>
+                    </section>
+                    <section class="verb">
+                        <h3> Simple past tense </h3>
+                        <table>
+                            {{ SimplePast.as_table }}
+                        </table>
+                    </section>
+                    <section class="verb">
+                        <h3> Future tense </h3>
+                        <table>
+                            {{ Future.as_table }}
+                        </table>
+                    </section>
+                    <section class="verb">
+                        <h3> Conditional tense </h3>
+                        <table>
+                            {{ Conditional.as_table }}
+                        </table>
+                    </section>
+                    <input type="submit" value="Add">
+
+                </form>
+
+            </div>
+
+            <div class="index-links">
+                <!-- div region for navigation links -->
+                <h3> Navigation options (remove translations not yet implemented)</h3>
+                <form action="/options/" method="GET">
+                    <input type="submit" name="learn_vocabulary" value="Learn your vocabulary">
+                    <input type="submit" name="test_vocabulary" value="Test your vocabulary">
+                    <input type="submit" name="remove_translation" value="Remove a translation">
+                    <input type="submit" name="back_to_index" value="Back">
+                </form>
+            </div>
+
+            <div class="index-list">
+            <!--
+                This region is to be left empty
+            -->
+            </div>
+        </div> <!-- end of grid-index div -->
+    </body>
+</html>
+
