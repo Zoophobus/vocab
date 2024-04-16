@@ -57,14 +57,14 @@ def add(request):
         try: 
             category = TranslationGroup(groupName=group.data['groupName'],created=timezone.now())
             category.save()
-        except IntegrityError:
+        except:# Broadening the exception handling #1 IntegrityError:
             category = TranslationGroup.objects.get(groupName=group.data['groupName'])
         try:
             data = Translation(language_a=EntryA,language_b=EntryB,creation_date=timezone.now(),translation_key=EntryA.value + '---' + EntryB.value)
             data.save()
             data.translation_group.add(category)
             status = True
-        except IntegrityError:
+        except:# Broadening the exception handling #1 IntegrityError:
             status = False
 
     return HttpResponseRedirect(reverse('index'),{
@@ -289,7 +289,7 @@ class Learn(View):
                     })
         elif 'next' in request.GET:
             if self.current == None or self.current.ready():
-                self.current = learning.pop()
+                self.current = self.toLearn.pop()
             self.current_translation = self.current.choose()
             if len(self.toLearn) == 0:
                 self.finished = True
@@ -319,14 +319,14 @@ class Learn(View):
                         if len(relevant) > 0:
                             return Learn.positive_response(
                                     request,
-                                    attempt,
+                                    correct,
                                     self.current_translation,
                                     [alt.language_b.value for alt in relevant],
                                     self.finished
                                 )
                         else:
                             return Learn.positive_response(
-                                    request, attempt, 
+                                    request, correct, 
                                     self.current_translation, False, self.finished
                                     )
                     elif self.current.is_a_verb:
@@ -344,14 +344,14 @@ class Learn(View):
                         if len(relevant) > 0:
                             return Learn.positive_response(
                                     request,
-                                    attempt,
+                                    correct,
                                     self.current_translation,
                                     [alt.language_a.value for alt in relevant],
                                     self.finished
                                 )
                         else:
                             return Learn.positive_response(
-                                    request, attempt,
+                                    request, correct,
                                     self.current_translation, False, self.finished
                                     )
                     elif self.current.is_a_verb:
@@ -457,13 +457,13 @@ class Test(View):
                         if len(relevant) > 0:
                             return self.positive_response(
                                     request,
-                                    attempt,
+                                    correct,
                                     self.current_translation,
                                     [alt.language_b.value for alt in relevant]
                                     )
                         else:
                             return self.positive_response(
-                                    request, attempt,
+                                    request, correct,
                                     self.current_translation, False
                                     )
                     elif self.current.is_a_verb:
@@ -482,12 +482,12 @@ class Test(View):
                         if len(relevant) > 0:
                             return self.positive_response(
                                     request,
-                                    attempt,
+                                    correct,
                                     self.current_translation,
                                     [alt.language_a.value for alt in relevant])
                         else:
                             return self.positive_response(
-                                    request, attempt, 
+                                    request, correct, 
                                     self.current_translation, False
                                     )
                     if self.current.is_a_verb:

@@ -1,8 +1,8 @@
 version: '3'
 
 volumes:
-  vocabulary_learner_postgres_data: {}
-  vocabulary_learner_postgres_data_backups: {}
+  vocabulary_learner_mysql_data: {}
+  vocabulary_learner_mysql_data_backups: {}
 
 services:
   django:
@@ -12,25 +12,25 @@ services:
     image: vocabulary_learner
     container_name: vocabulary_learner 
     depends_on:
-      - postgres
+      - mysql 
     volumes:
       - .:/app:z
     env_file:
       - ./.envs/.local/.django
-      - ./.envs/.local/.postgres
+      - ./.envs/.local/.mysql
     ports:
       - '8016:8016'
     command: /start
 
-  postgres:
+  mysql:
     build:
       context: .
-      dockerfile: ./compose/production/postgres/Dockerfile
-    image: vocabulary_learner_postgres
-    container_name: vocabulary_learner_postgres
+      dockerfile: ./compose/production/mysql/Dockerfile
+    image: vocabulary_learner_mysql
+    container_name: vocabulary_learner_mysql
     volumes:
-      - vocabulary_learner_postgres_data:/var/lib/postgresql/data
-      - vocabulary_learner_postgres_data_backups:/backups
+      - vocabulary_learner_mysql_data:/var/lib/mysql/data
+      - vocabulary_learner_mysql_data_backups:/backups
     env_file:
-      - ./.envs/.local/.postgres
+      - ./.envs/.local/.mysql
 

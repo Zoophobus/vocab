@@ -375,7 +375,7 @@ class Translation(models.Model):
                     return True, correct
             else:
                 correct = self.language_a.value
-                if re.search(attempt, self.language_a):
+                if re.search(attempt, self.language_a.value):
                     return True, correct
         elif form != "adj/adv/noun":
             correct = self.tenses.checkConjugation(form)

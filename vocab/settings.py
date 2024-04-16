@@ -30,10 +30,11 @@ if READ_DOT_ENV_FILE:
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+#SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = 'SECRET_KEY_FOR_DEBUGGING'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = True# env('DEBUG')
 
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'debug_toolbar',
     'vocabulary.apps.VocabularyConfig',
 ]
 
@@ -58,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'vocab.urls'
@@ -84,8 +87,15 @@ WSGI_APPLICATION = 'vocab.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {"default": env.db("DATABASE_URL")}
-DATABASES["default"]["ATOMIC_REQUESTS"] = True
+# Docker database settings
+#DATABASES = {"default": env.db("DATABASE_URL")}
+#DATABASES["default"]["ATOMIC_REQUESTS"] = True
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'mydatabase',
+    }
+}
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -129,3 +139,7 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 APPEND_SLASH=False
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
