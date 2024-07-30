@@ -18,7 +18,7 @@ from .models import SimplePresent, SimplePast, PresentPerfect, Future, Condition
 
 
 # Some utility functions for use globally across the views
-def recentTranslations():
+def recent_translations():
     latest = Translation.objects.order_by('-creation_date')[:5]
     return [t.language_a.value + " - " + t.language_b.value for t in latest]
 
@@ -26,41 +26,37 @@ def recentTranslations():
 def index(request):
     return render(request,'learn/index.html',
             {   
-#                'english' : eng,
-#                'dutch' : dtch,
-#                'group' : grp,
-                'recent' : recentTranslations(),
+                'recent' : recent_translations(),
                 }
         )
 
 def add(request):
     if request.method == 'POST':
         entries = request.POST.getlist('value')
-        EntryA = None
-        EntryB = None
+        entryA = None
+        entryB = None
         category = None
-        # first we try and either create or obtain the entries
+        # first try to either create or obtain the entries
         try:
-            # Create the entries and save them
-            EntryA = LanguageA(value=entries[0],creation_date=timezone.now())
-            EntryA.save()
+            entryA = LanguageA.objects.get(value=entries[0])
         except:
-            EntryA = LanguageA.objects.get(value=entries[0])
+            entryA = LanguageA(value=entries[0],creation_date=timezone.now())
+            entryA.save()
         try:
-            EntryB = LanguageB(value=entries[1],creation_date=timezone.now())
-            EntryB.save()
+            entryB = LanguageB.objects.get(value=entries[1])
         except:
-            EntryB = LanguageB.objects.get(value=entries[1])
+            entryB = LanguageB(value=entries[1],creation_date=timezone.now())
+            entryB.save()
         
-        # then we try and bind them together, along with creating or obtaining the category
+        # get the category or create a new category from the provided details
         group = TranslationGroupForm(request.POST)
         try: 
+            category = TranslationGroup.objects.get(groupName=group.data['groupName'])
+        except:
             category = TranslationGroup(groupName=group.data['groupName'],created=timezone.now())
             category.save()
-        except IntegrityError:
-            category = TranslationGroup.objects.get(groupName=group.data['groupName'])
         try:
-            data = Translation(language_a=EntryA,language_b=EntryB,creation_date=timezone.now(),translation_key=EntryA.value + '---' + EntryB.value)
+            data = Translation(language_a=entryA,language_b=entryB,creation_date=timezone.now(),translation_key=entryA.value + '---' + entryB.value)
             data.save()
             data.translation_group.add(category)
             status = True
@@ -68,7 +64,7 @@ def add(request):
             status = False
 
     return HttpResponseRedirect(reverse('index'),{
-        'recent' : recentTranslations(),
+        'recent' : recent_translations(),
         'status' : status,
         })
 
@@ -79,9 +75,8 @@ def add_verb(request):
         entryA = None
         entryB = None
         category = None
-        # first we try and either create or obtain the entries
+        # first try to create, or get the entries
         try:
-            # Create the entries and save them
             entryA = LanguageA(value=entries[0],creation_date=timezone.now())
             entryA.save()
         except:
@@ -92,15 +87,15 @@ def add_verb(request):
         except:
             entryB = LanguageB.objects.get(value=entries[1])
         
-        # then we try and bind them together, along with creating or obtaining the category
+        # get the category for the translation
         group = TranslationGroupForm(request.POST)
         try: 
             category = TranslationGroup(groupName=group.data['groupName'],created=timezone.now())
             category.save()
         except IntegrityError:
             category = TranslationGroup.objects.get(groupName=group.data['groupName'])
+        # create the different conjugate forms
         try:
-            # TODO might need some further adjustment, in case things go wrong
             spr = SimplePresentForm(request.POST)
             spa = SimplePastForm(request.POST)
             pp = PresentPerfectForm(request.POST)
@@ -164,7 +159,7 @@ def add_verb(request):
                     present_perfect=ppm, future=fm, conditional=cm)
                 verb_tenses.save()
         except Exception as e:
-            print(e)
+            status = False
 
         try:
             data = Translation(language_a=entryA, language_b=entryB, creation_date=timezone.now(), translation_key=entryA.value + '---' + entryB.value, is_a_verb=True, tenses=verb_tenses)
@@ -175,7 +170,7 @@ def add_verb(request):
             status = False
 
     return HttpResponseRedirect(reverse('index'),{
-        'recent' : recentTranslations(),
+        'recent' : recent_translations(),
         'status' : status,
         })
 
@@ -184,7 +179,6 @@ def options(request):
     if request.method == 'GET':
         form_data = request.GET
         if 'learn_vocabulary' in form_data:
-            request.GET.get
             return render(request,'learn/learn_vocabulary.html', 
                     {
                         'date_form' : DateForm(request.GET),
@@ -224,24 +218,17 @@ def options(request):
                         'group' : TranslationGroupForm(request.GET),
 
                         })
-    return render(request,'learn/index.html',
-            {
-                'recent' : recentTranslations(),
-                }
-            )
+    return index(request) 
 
-# TODO create a better structure for the Learn and Test View classes.
+
 class Learn(View):
-    # this is a weird case where the following static variables
-    # do not appear to have the same scope as the class, which
-    # is what would normally be expected
-    toLearn = list()
-    finished = True 
+    vocabulary_to_learn = list()
+    finished_vocabulary = True 
     current_translation = None
-    current = None
+    current_word = None
 
     @staticmethod
-    def positive_response(request, attempt, translation: tuple, alternatives, finished):
+    def positive_response(request, attempt, translation: tuple, alternatives, finished_vocabulary):
         return render(request,'learn/learn_vocabulary.html',
             {
                 'category' : translation[0],
@@ -249,124 +236,125 @@ class Learn(View):
                 'response' : attempt,
                 'good_response' : True,
                 'alternatives' : alternatives,
-                'completed' : finished,
+                'completed' : finished_vocabulary,
                 })
+            
+    @staticmethod
+    def check_request(request):
+        '''
+        Uses static class variables to check if the users response includes the correct answer.
+        Parameter: the request object from the relevant form: In this case from the "check" button.
+        Returns: The respective page with the template learn_vocabulary.html
+        '''
+        attempt = request.GET.getlist('check')[0]
+        relevant = list()
+        alternative = list()
+        if Learn.current_translation.language_a.value.__eq__(Learn.current_word[1].value):
+            # Required language specification due to the use of Django Model attributes for sorting
+            # and filtering response variables, searching language_b for a response in language_a
+            relevant = Translation.objects.filter(language_a=Learn.current_translation.language_a)
+            for translations in relevant:
+                passed, correct = translations.check_translation(attempt, Learn.current_word[0], 'b')
+                if passed:
+                    relevant = relevant.exclude(language_b=translations.language_b)
+                    alternatives = [alt.language_b.value for alt in relevant] if len(relevant) > 0 else False
+                    return Learn.positive_response(
+                            request,
+                            attempt,
+                            Learn.current_word,
+                            alternatives,
+                            Learn.finished_vocabulary
+                        )
+                elif Learn.current_translation.is_a_verb:
+                    alternative.append(correct)
+            if not Learn.current_translation.is_a_verb:
+                alternative = relevant
+        else:
+            # The alternative language specification, searching language_a for a response in
+            # language_b
+            relevant = Translation.objects.filter(language_b=Learn.current_translation.language_b)
+            for translations in relevant:
+                passed, correct = translations.check_translation(attempt, Learn.current_word[0], 'a')
+                if passed:
+                    relevant = relevant.exclude(language_a=translations.language_a)
+                    alternatives = [alt.language_a.value for alt in relevant] if len(relevant) > 0 else False
+                    return Learn.positive_response(
+                            request,
+                            attempt,
+                            Learn.current_word,
+                            alternatives,
+                            Learn.finished_vocabulary
+                        )
+                elif Learn.current_translation.is_a_verb:
+                    alternative.append(correct)
+            if not Learn.current_translation.is_a_verb:
+                alternative = relevant
+        return render(request,'learn/learn_vocabulary.html',
+            {
+                'category' : Learn.current_word[0],
+                'translation' : Learn.current_word[1],
+                'response' : attempt,
+                'good_response' : False,
+                'alternatives' : alternative,
+                'completed' : Learn.finished_vocabulary,
+                })
+
+    @staticmethod
+    def start(request):
+        if Learn.finished_vocabulary:
+            if len(request.GET.getlist('translation_list')) > 0:
+                Learn.vocabulary_to_learn = list()
+                for group in request.GET.getlist('translation_list'):
+                    Learn.vocabulary_to_learn += list(Translation.objects.filter(translation_group__groupName=group))
+            elif 'date' in request.GET:
+                upperDate =  datetime.date.today().year.__str__() + "-" + datetime.date.today().month.__str__() +'-'+ str(datetime.date.today().day+1)
+                Learn.vocabulary_to_learn = list(Translation.objects.filter(creation_date__range=[request.GET['date'],upperDate]))
+            else:
+                return index(request)
+            random.shuffle(Learn.vocabulary_to_learn)
+            Learn.finished_vocabulary = False
+        try:
+            Learn.current_translation = Learn.vocabulary_to_learn.pop()
+            Learn.current_word = Learn.current_translation.choose()
+        except:
+            Learn.finished_vocabulary = True
+        return render(request,'learn/learn_vocabulary.html',
+            {   
+                'category' : Learn.current_word[0],
+                'translation' : Learn.current_word[1],
+                'response' : TextForm(request.GET),
+                'completed' : Learn.finished_vocabulary
+                })
+ 
+    @staticmethod
+    def next(request):
+        if len(Learn.vocabulary_to_learn) == 0:
+            Learn.finished_vocabulary = True
+        if Learn.current_translation == None or Learn.current_translation.ready():
+            Learn.current_translation = Learn.vocabulary_to_learn.pop()
+        Learn.current_word = Learn.current_translation.choose()
+        if len(Learn.vocabulary_to_learn) == 0:
+            Learn.finished_vocabulary = True
+        return render(request,'learn/learn_vocabulary.html',
+                {
+                    'category' : Learn.current_word[0],
+                    'translation' : Learn.current_word[1],
+                    'response' : TextForm(request.GET),
+                    'completed' : Learn.finished_vocabulary,
+                    'date_form' : DateForm(request.GET),
+                    })
+
 
     def get(self, request):
         if 'return' in request.GET or 'finish' in request.GET:
-            self.finished = True
-            return HttpResponseRedirect(reverse('index'),{
-                'recent' : recentTranslations(),
-                })
+            Learn.finished_vocabulary = True
+            return index(request)
         elif 'start' in request.GET:
-            if self.finished:
-                self.toLearn = list()
-                if len(request.GET.getlist('translation_list')) > 0:
-                    for group in request.GET.getlist('translation_list'):
-                        self.toLearn += list(Translation.objects.filter(translation_group__groupName=group))
-                elif 'date' in request.GET:
-                    upperDate =  datetime.date.today().year.__str__() + "-" + datetime.date.today().month.__str__() +'-'+ str(datetime.date.today().day+1)
-                    self.toLearn = list(Translation.objects.filter(creation_date__range=[request.GET['date'],upperDate]))
-                else:
-                    # add a shortened list with the five most recent entries
-                    return HttpResponseRedirect(reverse('index'),{
-                        'recent' : recentTranslations(),
-                        })
-                random.shuffle(self.toLearn)
-                self.finished = False
-            try:
-                if self.current == None or self.current.ready():
-                    self.current = self.toLearn.pop()
-                self.current_translation = self.current.choose()
-            except:
-                self.finished = True
-            return render(request,'learn/learn_vocabulary.html',
-                {   
-                    'category' : self.current_translation[0],
-                    'translation' : self.current_translation[1],
-                    'response' : TextForm(request.GET),
-                    'completed' : self.finished
-                    })
+            return Learn.start(request)
         elif 'next' in request.GET:
-            if self.current == None or self.current.ready():
-                self.current = learning.pop()
-            self.current_translation = self.current.choose()
-            if len(self.toLearn) == 0:
-                self.finished = True
-            return render(request,'learn/learn_vocabulary.html',
-                    {
-                        'category' : self.current_translation[0],
-                        'translation' : self.current_translation[1],
-                        'response' : TextForm(request.GET),
-                        'completed' : self.finished,
-                        'date_form' : DateForm(request.GET),
-                        })
+            return Learn.next(request)
         elif 'check' in request.GET:
-            attempt = request.GET.getlist('check')[0]
-            relevant = list()
-            alternative = list()
-            if self.current.language_a.value == self.current_translation[1]:
-                # we look up the attempt in language B
-                # look up in language (_a, or _b)
-                # with self.current.language (_a, or _b)
-
-                relevant = Translation.objects.filter(language_a=self.current.language_a)
-                for b_translations in relevant:
-                    passed, correct = b_translations.check_translation(attempt, self.current_translation[0], 'b')
-                    if passed:
-#                    if re.sub(r'^the ','',attempt) == re.sub('^the ','',b_translations.language_b.value):
-                        relevant = relevant.exclude(language_b=b_translations.language_b)
-                        if len(relevant) > 0:
-                            return Learn.positive_response(
-                                    request,
-                                    attempt,
-                                    self.current_translation,
-                                    [alt.language_b.value for alt in relevant],
-                                    self.finished
-                                )
-                        else:
-                            return Learn.positive_response(
-                                    request, attempt, 
-                                    self.current_translation, False, self.finished
-                                    )
-                    elif self.current.is_a_verb:
-                        alternative.append(correct)
-                if not self.current.is_a_verb:
-                    alternative = relevant
-            else:
-                # we look up the attempt in language A
-                relevant = Translation.objects.filter(language_b=self.current.language_b)
-                for a_translations in relevant:
-                    passed, correct = a_translations.check_translation(attempt, self.current_translation[0], 'a')
-                    if passed:
-#                    if re.sub(r'^the ','',attempt) == re.sub(r'^the ','',a_translations.language_a.value):
-                        relevant = relevant.exclude(language_a=a_translations.language_a)
-                        if len(relevant) > 0:
-                            return Learn.positive_response(
-                                    request,
-                                    attempt,
-                                    self.current_translation,
-                                    [alt.language_a.value for alt in relevant],
-                                    self.finished
-                                )
-                        else:
-                            return Learn.positive_response(
-                                    request, attempt,
-                                    self.current_translation, False, self.finished
-                                    )
-                    elif self.current.is_a_verb:
-                        alternative.append(correct)
-                if not self.current.is_a_verb:
-                    alternative = relevant
-            return render(request,'learn/learn_vocabulary.html',
-                {
-                    'category' : self.current_translation[0],
-                    'translation' : self.current_translation[1],
-                    'response' : attempt,
-                    'good_response' : False,
-                    'alternatives' : alternative,
-                    'completed' : self.finished,
-                    })
+            return Learn.check_request(request)
 
     @classmethod
     def as_view(cls,request):
@@ -375,12 +363,9 @@ class Learn(View):
 
 
 class Test(View):
-    # this is a weird case where the following static variables
-    # do not appear to have the same scope as the class, which
-    # is what would normally be expected
     vocabularTestList = list()
     current_translation = None
-    current = None
+    current_word = None
     successes=0
     attempts=0
 
@@ -395,113 +380,110 @@ class Test(View):
                 'alternatives' : alternatives,
                 }
             )
+    
+    @staticmethod
+    def test_response(request):
+        attempt = request.GET.getlist('check')[0]
+        Test.attempts+=1
+        relevant = list()
+        alternatives = list()
+        if Test.current_translation.language_a.value.__eq__(Test.current_word[1].value):
+            relevant = Translation.objects.filter(language_a=Test.current_translation.language_a)
+            for b_translations in relevant:
+                passed, correct = b_translations.check_translation(attempt, Test.current_word[0], 'b')
+                if passed:
+                    Test.successes+=1
+                    relevant = relevant.exclude(language_b=b_translations.language_b)
+                    alternative_responses = [alt.language_b.value for alt in relevant] if len(relevant) > 0 else False
+                    return Test.positive_response(
+                            request,
+                            attempt,
+                            Test.current_word,
+                            alternative_responses
+                            )
+                elif Test.current_translation.is_a_verb:
+                    alternatives.append(correct)
+            if not Test.current_translation.is_a_verb:
+                alternatives = relevant
+        else:
+            relevant = Translation.objects.filter(language_b=Test.current_translation.language_b)
+            for a_translations in relevant:
+                passed, correct = a_translations.check_translation(attempt, Test.current_word[0], 'a')
+                if passed:
+                    Test.successes+=1
+                    relevant = relevant.exclude(language_a=a_translations.language_a)
+                    alternative_responses = [alt.language_a.value for alt in relevant] if len(relevant) > 0 else False
+                    return Test.positive_response(
+                            request,
+                            attempt,
+                            Test.current_word,
+                            alternative_responses
+                            )
+                if Test.current_translation.is_a_verb:
+                    alternatives.append(correct)
+            if not Test.current_translation.is_a_verb:
+                alternatives = relevant
+        return render(request,'learn/test.html',
+            {
+                'category' : Test.current_word[0],
+                'translation' : Test.current_word[1],
+                'response' : attempt,
+                'good_response' : False,
+                'alternatives' : alternatives,
+                })
+
+    @staticmethod
+    def start_test(request):
+        Test.attempts = 0
+        Test.successes = 0
+        Test.vocabularTestList = list()
+        if len(request.GET.getlist('translation_list')) > 0:
+            for group in request.GET.getlist('translation_list'):
+                Test.vocabularTestList += list(Translation.objects.filter(translation_group__groupName=group))
+        else:
+            upperDate =  datetime.date.today().year.__str__() + "-" + datetime.date.today().month.__str__() +'-'+ str(datetime.date.today().day+1)
+            Test.vocabularTestList = list(Translation.objects.filter(creation_date__range=[request.GET['date'],upperDate]))
+        if Test.current_translation == None or Test.current_translation.ready(3):
+            Test.current_translation = Test.vocabularTestList[random.randrange(0, len(Test.vocabularTestList))]
+        Test.current_word = Test.current_translation.choose()
+        return render(request,'learn/test.html',
+            {   
+                'category' : Test.current_word[0],
+                'translation' : Test.current_word[1],
+                'response' : TextForm(request.GET),
+                })
+
+    @staticmethod
+    def next(request):
+        if Test.current_translation == None or Test.current_translation.ready(3):
+            Test.current_translation = Test.vocabularTestList[random.randrange(0, len(Test.vocabularTestList))]
+        Test.current_word = Test.current_translation.choose()
+        return render(request,'learn/test.html',
+                {
+                    'category' : Test.current_word[0],
+                    'translation' : Test.current_word[1],
+                    'response' : TextForm(request.GET),
+                    'date_form' : DateForm(request.GET),
+                    })
 
     def get(self,request):
         if 'return' in request.GET:
-            return HttpResponseRedirect(reverse('index'),{
-                'recent' : recentTranslations(),
-                })
+            return index(request)
         elif 'start' in request.GET:
-            self.attempts = 0
-            self.successes = 0
-            self.vocabularTestList = list()
-            if len(request.GET.getlist('translation_list')) > 0:
-                for group in request.GET.getlist('translation_list'):
-                    self.vocabularTestList += list(Translation.objects.filter(translation_group__groupName=group))
-            else:
-                upperDate =  datetime.date.today().year.__str__() + "-" + datetime.date.today().month.__str__() +'-'+ str(datetime.date.today().day+1)
-                self.vocabularTestList = list(Translation.objects.filter(creation_date__range=[request.GET['date'],upperDate]))
-            if self.current == None or self.current.ready(3):
-                self.current = self.vocabularTestList[random.randrange(0, len(self.vocabularTestList))]
-            self.current_translation = self.current.choose()
-            return render(request,'learn/test.html',
-                {   
-                    'category' : self.current_translation[0],
-                    'translation' : self.current_translation[1],
-                    'response' : TextForm(request.GET),
-                    })
+            return Test.start_test(request)
         elif 'next' in request.GET:
-            if self.current == None or self.current.ready(3):
-                self.current = self.vocabularTestList[random.randrange(0, len(self.vocabularTestList))]
-            self.current_translation = self.current.choose()
-            return render(request,'learn/test.html',
-                    {
-                        'category' : self.current_translation[0],
-                        'translation' : self.current_translation[1],
-                        'response' : TextForm(request.GET),
-                        'date_form' : DateForm(request.GET),
-                        })
+            return Test.next(request)
         elif 'finish' in request.GET:
             return render(request,'learn/test.html',
                     {
                         'completed' : True,
                         'date_form' : DateForm(request.GET),
                         'by_groups' : TranslationListForm(request.GET),
-                        'tried' : self.attempts,
-                        'successes' : self.successes,
+                        'tried' : Test.attempts,
+                        'successes' : Test.successes,
                         })
         elif 'check' in request.GET:
-            attempt = request.GET.getlist('check')[0]
-            self.attempts+=1
-            relevant = list()
-            alternatives = list()
-            if self.current.language_a.value == self.current_translation[1]:
-                # we look up the attempt in language B
-                relevant = Translation.objects.filter(language_a=self.current.language_a)
-                for b_translations in relevant:
-                    passed, correct = b_translations.check_translation(attempt, self.current_translation[0], 'b')
-                    if passed:
-#                    if re.sub(r'^the ','',attempt) == re.sub(r'^the ','',b_translations.language_b.value):
-                        self.successes+=1
-                        relevant = relevant.exclude(language_b=b_translations.language_b)
-                        if len(relevant) > 0:
-                            return self.positive_response(
-                                    request,
-                                    attempt,
-                                    self.current_translation,
-                                    [alt.language_b.value for alt in relevant]
-                                    )
-                        else:
-                            return self.positive_response(
-                                    request, attempt,
-                                    self.current_translation, False
-                                    )
-                    elif self.current.is_a_verb:
-                        alternatives.append(correct)
-                if not self.current.is_a_verb:
-                    alternatives = relevant
-            else:
-                # we look up the attempt in language A
-                relevant = Translation.objects.filter(language_b=self.current.language_b)
-                for a_translations in relevant:
-                    passed, correct = a_translations.check_translation(attempt, self.current_translation[0], 'b')
-                    if passed:
-#                    if re.sub(r'^the ','',attempt) == re.sub(r'^the ','',a_translations.language_a.value):
-                        self.successes+=1
-                        relevant = relevant.exclude(language_a=a_translations.language_a)
-                        if len(relevant) > 0:
-                            return self.positive_response(
-                                    request,
-                                    attempt,
-                                    self.current_translation,
-                                    [alt.language_a.value for alt in relevant])
-                        else:
-                            return self.positive_response(
-                                    request, attempt, 
-                                    self.current_translation, False
-                                    )
-                    if self.current.is_a_verb:
-                        alternatives.append(correct)
-                if not self.current.is_a_verb:
-                    alternatives = relevant
-            return render(request,'learn/test.html',
-                {
-                    'category' : self.current_translation[0],
-                    'translation' : self.current_translation[1],
-                    'response' : attempt,
-                    'good_response' : False,
-                    'alternatives' : alternatives,
-                    })
+            return Test.test_response(request)
 
     @classmethod
     def as_view(cls,request):
@@ -511,9 +493,8 @@ def delete(request):
     if request.method == 'POST':
         trnsList = request.POST.getlist('translations')
         for key in trnsList:
-            print(type(key))
-            trnsl = Translation.objects.get(translation_key=key)
-            trnsl.delete()
+            translation_terms_to_remove = Translation.objects.get(translation_key=key)
+            translation_terms_to_remove.delete()
     return render(request,'learn/remove.html',
             {
                 'by_groups' : TranslationListForm(request.GET),
@@ -523,10 +504,9 @@ def delete(request):
 def group(request):
     trnsLst = list()
     if request.method == 'GET':
-        grp = request.GET.get('translation_list')[0]
-        print(grp)
+        translation_group = request.GET.get('translation_list')[0]
         return render(request,'learn/remove.html',
             {
                 'by_groups' : TranslationListForm(request.GET),
-                'everything' : TranslationsForm(request.GET,grp=grp),
+                'everything' : TranslationsForm(request.GET,grp=translation_group),
                 })

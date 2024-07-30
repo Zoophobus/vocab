@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+#from polymorphic.models import PolymorphicModel
 
 import random
 import re
@@ -61,6 +62,8 @@ class Infinitive(models.Model):
     def checkConjugation(self, value):
         return self.infinitive_form
 
+# adopting the PoymorphicModel design will require changes to the structure
+# and design for Verb construction
 
 class SimplePresent(models.Model):
     spr_first_person_singular = models.CharField(max_length=100)
@@ -112,22 +115,22 @@ class SimplePast(models.Model):
     spa_third_person_plural = models.CharField(max_length=100)
 
     def __str__(self):
-        return "the past perfect"
+        return "the past imperfect"
 
     def random(self):
         conj = random.randint(0,5)
         if conj == 0:
-            return ("the past perfect: first person singular of", self.spa_first_person_singular)
+            return ("the past imperfect: first person singular of", self.spa_first_person_singular)
         elif conj == 1:
-            return ("the past perfect: second person singular of", self.spa_second_person_singular)
+            return ("the past imperfect: second person singular of", self.spa_second_person_singular)
         elif conj == 2:
-            return ("the past perfect: third person singular of", self.spa_third_person_singular)
+            return ("the past imperfect: third person singular of", self.spa_third_person_singular)
         elif conj == 3:
-            return ("the past perfect: first person plural of", self.spa_first_person_plural)
+            return ("the past imperfect: first person plural of", self.spa_first_person_plural)
         elif conj == 4:
-            return ("the past perfect: second person plural of", self.spa_second_person_plural)
+            return ("the past imperfect: second person plural of", self.spa_second_person_plural)
         elif conj == 5:
-            return ("the past perfect: third person plural of", self.spa_third_person_singular)
+            return ("the past imperfect: third person plural of", self.spa_third_person_singular)
 
     def checkConjugation(self, value):
         if value.endswith("first person singular of"):
@@ -344,7 +347,7 @@ class Translation(models.Model):
 
     def choose(self) -> str:
         if not self.is_a_verb:
-            return ("adj/adv/noun", self.language_a.value) if random.randint(0,1) > 0 else ("adj/adv/noun", self.language_b.value)
+            return ("adj/adv/noun", self.language_a) if random.randint(0,1) > 0 else ("adj/adv/noun", self.language_b)
         else:
             conjugations = Verbs.objects.get(pk=self.tenses.pk)
             return (conjugations.choose()[0], self.language_a.value)
@@ -354,11 +357,10 @@ class Translation(models.Model):
             return True
         elif not hasattr(Translation.ready, 'is_ready') or Translation.ready.is_ready < 0:
             Translation.ready.is_ready = repeats
-        give = False
         if Translation.ready.is_ready == 0:
-            give = True
+            return True
         Translation.ready.is_ready -= 1
-        return give
+        return False
 
     def verb(self, set_: bool = None) -> bool:
         if set_ is not None:
@@ -366,21 +368,29 @@ class Translation(models.Model):
         return self.is_a_verb
 
     def check_translation(self, response: str, form: str, language: str):
+        # Provides the response for non-verb terms
+        def non_verb_response(language, attempt):
+            if re.search(attempt,language.value):
+                return True, language.value
+            else:
+                return False, language.value
+        # Provides responses for verbs
+        def verb_response(form, attempt):
+            response = self.tenses.checkConjugation(form)
+            if re.search(attempt, self.tenses.checkConjugation(form)):
+                return True, response
+            else:
+                return False, response
+
         attempt = r"" + re.escape(response)
         correct = ''
         if not self.is_a_verb and form == "adj/adv/noun":
             if language.endswith('b'):
-                correct = self.language_b.value
-                if re.search(attempt, self.language_b.value):
-                    return True, correct
+                return non_verb_response(self.language_b, attempt)
             else:
-                correct = self.language_a.value
-                if re.search(attempt, self.language_a):
-                    return True, correct
+                return non_verb_response(self.language_a, attempt)
         elif form != "adj/adv/noun":
-            correct = self.tenses.checkConjugation(form)
-            if re.search(attempt, correct):
-                return True, correct
+            return verb_response(form, attempt)
         return False, correct
 
 
