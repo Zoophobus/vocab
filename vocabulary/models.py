@@ -306,6 +306,27 @@ class Verbs(models.Model):
             return self.infinitive.random()
         return False
 
+    def choose_past(self) -> object:
+        tense = random.randint(0,1)
+        if tense == 0:
+            return self.simple_past.random()
+        else:
+            return self.present_perfect.random()
+    
+    def choose_future(self) -> object:
+        tense = random.randint(0,1)
+        if tense == 0:
+            return self.future.random()
+        else:
+            return self.conditional.random()
+
+    def choose_present(self) -> object:
+        tense = random.randint(0,1)
+        if tense == 0:
+            return self.simple_present.random()
+        else:
+            return self.infinitive.random()
+
     def checkConjugation(self, value):
         if value.startswith(self.simple_present.__str__()):
             return self.simple_present.checkConjugation(value)
@@ -345,12 +366,19 @@ class Translation(models.Model):
     def __str__(self):
         return self.language_a.__str__() + " --- " + self.language_b.__str__() + "\n"
 
-    def choose(self) -> str:
+    def choose(self, tense: str) -> str:
         if not self.is_a_verb:
             return ("adj/adv/noun", self.language_a) if random.randint(0,1) > 0 else ("adj/adv/noun", self.language_b)
-        else:
+        elif tense != None:
             conjugations = Verbs.objects.get(pk=self.tenses.pk)
-            return (conjugations.choose()[0], self.language_a.value)
+            if tense == 'Past':
+                return (conjugations.choose_past()[0], self.language_a.value)
+            elif tense == 'Future':
+                return (conjugations.choose_future()[0], self.language_a.value)
+            elif tense == 'Present':
+                return (conjugations.choose_present()[0], self.language_a.value)
+            else:
+                return (conjugations.choose()[0], self.language_a.value)
         
     def ready(self, repeats: int = 6) -> bool:
         if not self.is_a_verb:

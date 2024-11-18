@@ -12,7 +12,7 @@ import datetime
 from .forms import LanguageBForm, LanguageAForm, DateForm, TextForm, TranslationGroupForm, TranslationListForm, TranslationsForm
 from .models import LanguageA, LanguageB, Translation, TranslationGroup
 
-from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm#, VerbsForm # is VerbsForm required here?
+from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm, VerbTenseForm#, VerbsForm # is VerbsForm required here?
 from .models import SimplePresent, SimplePast, PresentPerfect, Future, Conditional, Verbs, Infinitive#, Tense # Tense is probably not required
 # Create your views here.
 
@@ -90,10 +90,11 @@ def add_verb(request):
         # get the category for the translation
         group = TranslationGroupForm(request.POST)
         try: 
+            category = TranslationGroup.objects.get(groupName=group.data['groupName'])
+        # if it doesnt exist create it
+        except Exception:
             category = TranslationGroup(groupName=group.data['groupName'],created=timezone.now())
             category.save()
-        except IntegrityError:
-            category = TranslationGroup.objects.get(groupName=group.data['groupName'])
         # create the different conjugate forms
         try:
             spr = SimplePresentForm(request.POST)
@@ -183,6 +184,7 @@ def options(request):
                     {
                         'date_form' : DateForm(request.GET),
                         'by_groups' : TranslationListForm(request.GET),
+                        'verb_options' : VerbTenseForm(),
                         }
                     )
         elif 'test_vocabulary' in form_data:
@@ -190,6 +192,7 @@ def options(request):
                     {
                         'date_form' : DateForm(request.GET),
                         'by_groups' : TranslationListForm(request.GET),
+                        'verb_options' : VerbTenseForm(),
                         }
                     )
         elif 'remove_translation' in form_data:
@@ -226,6 +229,7 @@ class Learn(View):
     finished_vocabulary = True 
     current_translation = None
     current_word = None
+    randomized_tenses = None
 
     @staticmethod
     def positive_response(request, attempt, translation: tuple, alternatives, finished_vocabulary):
@@ -301,6 +305,7 @@ class Learn(View):
 
     @staticmethod
     def start(request):
+        Learn.randomized_tenses = request.GET.get('verb_tense_fields')
         if Learn.finished_vocabulary:
             if len(request.GET.getlist('translation_list')) > 0:
                 Learn.vocabulary_to_learn = list()
@@ -315,7 +320,7 @@ class Learn(View):
             Learn.finished_vocabulary = False
         try:
             Learn.current_translation = Learn.vocabulary_to_learn.pop()
-            Learn.current_word = Learn.current_translation.choose()
+            Learn.current_word = Learn.current_translation.choose(Learn.randomized_tenses)
         except:
             Learn.finished_vocabulary = True
         return render(request,'learn/learn_vocabulary.html',
@@ -332,7 +337,7 @@ class Learn(View):
             Learn.finished_vocabulary = True
         if Learn.current_translation == None or Learn.current_translation.ready():
             Learn.current_translation = Learn.vocabulary_to_learn.pop()
-        Learn.current_word = Learn.current_translation.choose()
+        Learn.current_word = Learn.current_translation.choose(Learn.randomized_tenses)
         if len(Learn.vocabulary_to_learn) == 0:
             Learn.finished_vocabulary = True
         return render(request,'learn/learn_vocabulary.html',
@@ -366,6 +371,8 @@ class Test(View):
     vocabularTestList = list()
     current_translation = None
     current_word = None
+    # TODO add a variable for the verb tenses to be included
+    randomized_tenses = None
     successes=0
     attempts=0
 
@@ -387,7 +394,9 @@ class Test(View):
         Test.attempts+=1
         relevant = list()
         alternatives = list()
-        if Test.current_translation.language_a.value.__eq__(Test.current_word[1].value):
+        print(Test.current_word)
+#        if Test.current_translation.language_a.value.__eq__(Test.current_word[1].value):
+        if Test.current_translation.language_a.value.__eq__(Test.current_word[1]):
             relevant = Translation.objects.filter(language_a=Test.current_translation.language_a)
             for b_translations in relevant:
                 passed, correct = b_translations.check_translation(attempt, Test.current_word[0], 'b')
@@ -434,9 +443,11 @@ class Test(View):
 
     @staticmethod
     def start_test(request):
+        # TODO need to add the context for the form of tense for testing the verbs
         Test.attempts = 0
         Test.successes = 0
         Test.vocabularTestList = list()
+        Test.randomized_tenses = request.GET.get('verb_tense_fields')
         if len(request.GET.getlist('translation_list')) > 0:
             for group in request.GET.getlist('translation_list'):
                 Test.vocabularTestList += list(Translation.objects.filter(translation_group__groupName=group))
@@ -445,7 +456,7 @@ class Test(View):
             Test.vocabularTestList = list(Translation.objects.filter(creation_date__range=[request.GET['date'],upperDate]))
         if Test.current_translation == None or Test.current_translation.ready(3):
             Test.current_translation = Test.vocabularTestList[random.randrange(0, len(Test.vocabularTestList))]
-        Test.current_word = Test.current_translation.choose()
+        Test.current_word = Test.current_translation.choose(Test.randomized_tenses)
         return render(request,'learn/test.html',
             {   
                 'category' : Test.current_word[0],
@@ -457,7 +468,7 @@ class Test(View):
     def next(request):
         if Test.current_translation == None or Test.current_translation.ready(3):
             Test.current_translation = Test.vocabularTestList[random.randrange(0, len(Test.vocabularTestList))]
-        Test.current_word = Test.current_translation.choose()
+        Test.current_word = Test.current_translation.choose(Test.randomized_tenses)
         return render(request,'learn/test.html',
                 {
                     'category' : Test.current_word[0],
@@ -465,6 +476,7 @@ class Test(View):
                     'response' : TextForm(request.GET),
                     'date_form' : DateForm(request.GET),
                     })
+
 
     def get(self,request):
         if 'return' in request.GET:

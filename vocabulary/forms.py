@@ -82,6 +82,24 @@ class TranslationsForm(forms.Form):
             )
 
 
+class VerbTenseForm(forms.Form):
+    tense_options = (
+        ('All', 'All'),
+        ('Present', 'Present'),
+        ('Past', 'Past'),
+        ('Future', 'Future'),
+    )
+    verb_tense_fields = forms.ChoiceField(choices=tense_options,initial='All')
+#    def __init__(self,*args,**kwargs):
+#        if 'choice' in kwargs:
+#            self.option = kwargs.pop('choice')
+#            super(VerbTenseForm,self).__init__(*args,**kwargs)
+#            self.fields['tense_field'].widget = forms.ChoiceField(choices=VerbTenseForm.tense_options,initial=self.option)
+#        else:
+#            super(VerbTenseForm,self).__init__(*args,**kwargs)
+#            self.fields['tense_field'].widget = forms.ChoiceField(choices=VerbTenseForm.tense_options,initial='All')
+
+
 #class TranslationsForm(forms.ModelForm):
 #    class Meta:
 #        model = Translation

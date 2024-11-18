@@ -52,22 +52,32 @@
                             {{ by_groups.as_ul }}
                         </ul>
                         {{ date_form }}
+                        <br>
+                        {{ verb_options }}
+                        <br>
                         <input type="submit" name="start" value="Start">
                     </form>
+                    <div>
                     <form action="/test/" method="GET" name="back_to_the_homepage">
                         <input type="submit" name="return" value="Return">
                     </form>
+                    </div>
                 {% elif date_form %}
                     <form action="/test/" method="GET" name="learning_conditions">
                         <ul>
                             {{ by_groups.as_ul }}
                         </ul>
                         {{ date_form }}
+                        <br>
+                        {{ verb_options }}
+                        <br>
                         <input type="submit" name="start" value="Start">
                     </form>
+                    <div>
                     <form action="/test/" method="GET" name="back_to_the_homepage">
                         <input type="submit" name="return" value="Return">
                     </form>
+                    </div>
                 {% else %}
                     <form action="/test/" method="GET" name="next_vocabulary">
                         <input type="submit" name="next" value="Next">
