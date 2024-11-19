@@ -10,12 +10,19 @@
     </head>
     <body>
         <div class="remove-grid">
+            <div>
+                <form action="/delete/" method="POST" name="deletion">
+                    {% csrf_token %}
+                    {{ by_groups }}
+                    <input type="submit" name="delete-group" value="Delete">
+                </form>
+            </div>
             <div class="entries">
 
                 <form action="/delete/" method="POST" name="deletion">
                     {% csrf_token %}
                     {{ everything }}
-                    <input type="submit" name="delete" value="Delete">
+                    <input type="submit" name="delete-individual" value="Delete">
                 </form>
             </div>
             

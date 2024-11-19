@@ -49,6 +49,9 @@
                             {{ by_groups }}
                         </ul>
                         {{ date_form }}
+                        <br>
+                        {{ verb_options }}
+                        <br>
                         <input type="submit" name="start" value="Start">
                     </form>
                     <form action="/start_learning/" method="GET" name="back_to_the_homepage">
@@ -60,6 +63,9 @@
                             {{ by_groups }}
                         </ul>
                         {{ date_form.as_p }}
+                        <br>
+                        {{ verb_options }}
+                        <br>
                         <input type="submit" name="start" value="Start">
                     </form>
                     <form action="/start_learning/" method="GET" name="back_to_the_homepage">

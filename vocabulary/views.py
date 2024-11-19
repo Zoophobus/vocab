@@ -253,7 +253,8 @@ class Learn(View):
         attempt = request.GET.getlist('check')[0]
         relevant = list()
         alternative = list()
-        if Learn.current_translation.language_a.value.__eq__(Learn.current_word[1].value):
+        #if Learn.current_translation.language_a.value.__eq__(Learn.current_word[1].value): # used previously
+        if Learn.current_translation.language_a.value.__eq__(Learn.current_word[1]):
             # Required language specification due to the use of Django Model attributes for sorting
             # and filtering response variables, searching language_b for a response in language_a
             relevant = Translation.objects.filter(language_a=Learn.current_translation.language_a)
@@ -320,7 +321,9 @@ class Learn(View):
             Learn.finished_vocabulary = False
         try:
             Learn.current_translation = Learn.vocabulary_to_learn.pop()
+            print(Learn.current_translation)
             Learn.current_word = Learn.current_translation.choose(Learn.randomized_tenses)
+            print(Learn.current_word)
         except:
             Learn.finished_vocabulary = True
         return render(request,'learn/learn_vocabulary.html',
@@ -503,10 +506,21 @@ class Test(View):
 
 def delete(request):
     if request.method == 'POST':
-        trnsList = request.POST.getlist('translations')
-        for key in trnsList:
-            translation_terms_to_remove = Translation.objects.get(translation_key=key)
-            translation_terms_to_remove.delete()
+        # TODO resolve the deletion issues related to the object retrieved by the filter process
+        # for model objects
+        if 'delete-individual' in request.POST:
+            trnsList = request.POST.getlist('translations')
+            for key in trnsList:
+                translation_terms_to_remove = Translation.objects.get(translation_key=key)
+                translation_terms_to_remove.delete()
+        elif 'delete-group' in request.POST:
+            groups = request.POST.getlist('translation_list')
+            for group in groups:
+                group_object = TranslationGroup.objects.get(groupName=group)
+                translations_to_remove = Translation.objects.filter(translation_group=group_object)
+                for translation in translations_to_remove:
+                    translation.delete()
+                group_object.delete()
     return render(request,'learn/remove.html',
             {
                 'by_groups' : TranslationListForm(request.GET),

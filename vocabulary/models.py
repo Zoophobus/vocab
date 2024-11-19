@@ -380,12 +380,13 @@ class Translation(models.Model):
             else:
                 return (conjugations.choose()[0], self.language_a.value)
         
-    def ready(self, repeats: int = 6) -> bool:
+    def ready(self, repeats: int = 3) -> bool:
         if not self.is_a_verb:
             return True
-        elif not hasattr(Translation.ready, 'is_ready') or Translation.ready.is_ready < 0:
+        elif not hasattr(Translation.ready, 'is_ready'):
             Translation.ready.is_ready = repeats
         if Translation.ready.is_ready == 0:
+            Translation.ready.is_ready = repeats
             return True
         Translation.ready.is_ready -= 1
         return False
