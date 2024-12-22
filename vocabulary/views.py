@@ -9,10 +9,10 @@ import random
 import re
 import datetime
 
-from .forms import LanguageBForm, LanguageAForm, DateForm, TextForm, TranslationGroupForm, TranslationListForm, TranslationsForm
+from .forms import LanguageBForm, LanguageAForm, DateForm, TextForm, TranslationGroupForm, TranslationListForm, TranslationsForm, SearchForm
 from .models import LanguageA, LanguageB, Translation, TranslationGroup
 
-from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm, VerbTenseForm#, VerbsForm # is VerbsForm required here?
+from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm, VerbTenseForm, TranslationsIndividualForm#, VerbsForm # is VerbsForm required here?
 from .models import SimplePresent, SimplePast, PresentPerfect, Future, Conditional, Verbs, Infinitive#, Tense # Tense is probably not required
 # Create your views here.
 
@@ -77,15 +77,15 @@ def add_verb(request):
         category = None
         # first try to create, or get the entries
         try:
+            entryA = LanguageA.objects.get(value=entries[0])
+        except:
             entryA = LanguageA(value=entries[0],creation_date=timezone.now())
             entryA.save()
-        except:
-            entryA = LanguageA.objects.get(value=entries[0])
         try:
+            entryB = LanguageB.objects.get(value=entries[1])
+        except:
             entryB = LanguageB(value=entries[1],creation_date=timezone.now())
             entryB.save()
-        except:
-            entryB = LanguageB.objects.get(value=entries[1])
         
         # get the category for the translation
         group = TranslationGroupForm(request.POST)
@@ -177,6 +177,8 @@ def add_verb(request):
 
 
 def options(request):
+    # TODO add the option to edit a translation.
+    #
     if request.method == 'GET':
         form_data = request.GET
         if 'learn_vocabulary' in form_data:
@@ -221,10 +223,18 @@ def options(request):
                         'group' : TranslationGroupForm(request.GET),
 
                         })
+        elif "edit" in form_data:
+            return render(request, 'learn/edit.html',
+                {
+                    'everything' : TranslationsIndividualForm(request.GET),
+                    'search' : SearchForm(request.GET),
+                })
     return index(request) 
 
 
 class Learn(View):
+    # TODO add a specification for the user as to whether they need to conjugate, or provide the translation
+    # for a verb
     vocabulary_to_learn = list()
     finished_vocabulary = True 
     current_translation = None
@@ -371,10 +381,11 @@ class Learn(View):
 
 
 class Test(View):
+    # TODO add a specification for the user as to whether they need to conjugate, or provide the translation
+    # for a verb
     vocabularTestList = list()
     current_translation = None
     current_word = None
-    # TODO add a variable for the verb tenses to be included
     randomized_tenses = None
     successes=0
     attempts=0
@@ -446,7 +457,6 @@ class Test(View):
 
     @staticmethod
     def start_test(request):
-        # TODO need to add the context for the form of tense for testing the verbs
         Test.attempts = 0
         Test.successes = 0
         Test.vocabularTestList = list()
@@ -506,14 +516,13 @@ class Test(View):
 
 def delete(request):
     if request.method == 'POST':
-        # TODO resolve the deletion issues related to the object retrieved by the filter process
-        # for model objects
         if 'delete-individual' in request.POST:
             trnsList = request.POST.getlist('translations')
             for key in trnsList:
                 translation_terms_to_remove = Translation.objects.get(translation_key=key)
                 translation_terms_to_remove.delete()
         elif 'delete-group' in request.POST:
+            # TODO need to check that the translation object is not in any other group
             groups = request.POST.getlist('translation_list')
             for group in groups:
                 group_object = TranslationGroup.objects.get(groupName=group)
@@ -526,6 +535,25 @@ def delete(request):
                 'by_groups' : TranslationListForm(request.GET),
                 'everything' : TranslationsForm(request.GET),
                 })
+
+def edit(request):
+    if request.method == 'POST':
+        if 'search-based-edit' in request.POST:
+            pass
+        elif 'checkbox-based-edit' in request.POST:
+            id = request.POST.get('checkbox-based-edit')
+            print(id)
+            item = get_object_or_404(Translation, id=id)
+            if item.verb:
+                # TODO utilize the form generation procedure used in the options function above
+                render(request, 'learn/add_verb.html',
+                )
+            return render(request, 'learn/')
+    return render(request, 'learn/edit.html',
+        {
+            'by_groups' : TranslationListForm(request.GET),
+            'everything' : TranslationsForm(request.GET),
+    })
 
 def group(request):
     trnsLst = list()

@@ -106,9 +106,10 @@ div.test-results {
     grid-area: test-results;
 }
 
-div.remove-grid {
+div.edit-grid {
     display: grid;
     grid-template-areas:
+    'search groups'
     'entries groups';
     grid-gap: 10px;
     background-color: #DDDDEE;
@@ -117,7 +118,7 @@ div.remove-grid {
     border-width: thin;
 }
 
-div.remove-grid > div {
+div.edit-grid > div {
     padding: 60px 0;
     text-align: center;
     border-style: outset;
@@ -131,4 +132,8 @@ div.groups {
 
 div.entries {
     grid-area: entries;
+}
+
+div.search {
+    grid-area: search;
 }

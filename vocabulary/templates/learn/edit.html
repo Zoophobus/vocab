@@ -10,19 +10,19 @@
     </head>
     <body>
         <div class="edit-grid">
-            <div>
-                <form action="/delete/" method="POST" name="deletion">
+            <div class="search">
+                <form action="/edit/" method="POST" name="edit">
                     {% csrf_token %}
-                    {{ by_groups }}
-                    <input type="submit" name="delete-group" value="Delete">
+                    {{ search }}
+                    <input type="submit" name="search-based-edit" value="Edit">
                 </form>
             </div>
+            <br>
             <div class="entries">
-
-                <form action="/delete/" method="POST" name="deletion">
+                <form action="/edit/" method="POST" name="edit">
                     {% csrf_token %}
                     {{ everything }}
-                    <input type="submit" name="delete-individual" value="Delete">
+                    <input type="submit" name="checkbox-based-edit" value="Edit">
                 </form>
             </div>
             
@@ -30,13 +30,7 @@
                     <form action="/" method="GET" name="back_to_the_homepage">
                         <input type="submit" name="return" value="Return">
                     </form>
-<!--                <form action="/group/" method="GET" name="grouping">
-                    {{ by_groups }}
-                    <input type="submit" name="group" value="Select">
-                </form>
--->
             </div>
-
         </div>
     </body>
 </html>

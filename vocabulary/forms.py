@@ -72,6 +72,17 @@ class TranslationListForm(forms.Form):
             required=False,
             )
 
+# TODO fix this form so that only a single checkbox can be
+# selected
+class TranslationsIndividualForm(forms.Form):
+    translations = forms.ModelMultipleChoiceField(
+            widget=forms.CheckboxSelectMultiple(),
+            queryset=Translation.objects.all(),
+            to_field_name="translation_key",
+            initial=0,
+            required=False,
+            )
+
 class TranslationsForm(forms.Form):
     translations = forms.ModelMultipleChoiceField(
             widget=forms.CheckboxSelectMultiple(),
@@ -129,6 +140,17 @@ class TextForm(forms.Form):
             widget=forms.TextInput(attrs={
                 'size' : '50',
                 'placeholder' : 'write your response here',
+                'required' : 'False',
+                'autocomplete' : 'off',
+                }),
+            required=False
+            )
+
+class SearchForm(forms.Form):
+    check = forms.CharField(
+            widget=forms.TextInput(attrs={
+                'size' : '50',
+                'placeholder' : 'Search ... for editing',
                 'required' : 'False',
                 'autocomplete' : 'off',
                 }),
