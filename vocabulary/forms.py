@@ -74,14 +74,24 @@ class TranslationListForm(forms.Form):
 
 # TODO fix this form so that only a single checkbox can be
 # selected
-class TranslationsIndividualForm(forms.Form):
-    translations = forms.ModelMultipleChoiceField(
-            widget=forms.CheckboxSelectMultiple(),
+class TranslationsSingleElementForm(forms.Form):
+    translations = forms.ModelChoiceField(
+            widget=forms.RadioSelect(),
+#            choices=Translation.objects.all(),
             queryset=Translation.objects.all(),
+#            label="translation_key",
             to_field_name="translation_key",
             initial=0,
             required=False,
             )
+
+class TranslationSearchElementForm(forms.Form):
+    translations = forms.TypedChoiceField(
+            choices=Translation.objects.all(),
+            label="translation_key",
+            coerce = str
+            )
+
 
 class TranslationsForm(forms.Form):
     translations = forms.ModelMultipleChoiceField(
@@ -91,6 +101,14 @@ class TranslationsForm(forms.Form):
             initial=0,
             required=False,
             )
+
+
+class TranslationForm(forms.Form):
+    key = forms.IntegerField()
+    def __init__(self,*args,**kwargs):
+        super(TranslationForm,self).__init__(*args,**kwargs)
+        self.fields['key'].widget = forms.HiddenInput()
+        self.fields['key'].initial = kwags.get('initial',None)
 
 
 class VerbTenseForm(forms.Form):

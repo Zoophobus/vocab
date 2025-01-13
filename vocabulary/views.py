@@ -12,7 +12,7 @@ import datetime
 from .forms import LanguageBForm, LanguageAForm, DateForm, TextForm, TranslationGroupForm, TranslationListForm, TranslationsForm, SearchForm
 from .models import LanguageA, LanguageB, Translation, TranslationGroup
 
-from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm, VerbTenseForm, TranslationsIndividualForm#, VerbsForm # is VerbsForm required here?
+from .forms import SimplePresentForm, SimplePastForm, PresentPerfectForm, FutureForm, ConditionalForm, VerbTenseForm, TranslationsSingleElementForm#, VerbsForm # is VerbsForm required here?
 from .models import SimplePresent, SimplePast, PresentPerfect, Future, Conditional, Verbs, Infinitive#, Tense # Tense is probably not required
 # Create your views here.
 
@@ -226,7 +226,7 @@ def options(request):
         elif "edit" in form_data:
             return render(request, 'learn/edit.html',
                 {
-                    'everything' : TranslationsIndividualForm(request.GET),
+                    'everything' : TranslationsSingleElementForm(request.GET),
                     'search' : SearchForm(request.GET),
                 })
     return index(request) 
@@ -408,8 +408,6 @@ class Test(View):
         Test.attempts+=1
         relevant = list()
         alternatives = list()
-        print(Test.current_word)
-#        if Test.current_translation.language_a.value.__eq__(Test.current_word[1].value):
         if Test.current_translation.language_a.value.__eq__(Test.current_word[1]):
             relevant = Translation.objects.filter(language_a=Test.current_translation.language_a)
             for b_translations in relevant:
@@ -541,14 +539,176 @@ def edit(request):
         if 'search-based-edit' in request.POST:
             pass
         elif 'checkbox-based-edit' in request.POST:
-            id = request.POST.get('checkbox-based-edit')
-            print(id)
-            item = get_object_or_404(Translation, id=id)
-            if item.verb:
-                # TODO utilize the form generation procedure used in the options function above
-                render(request, 'learn/add_verb.html',
-                )
-            return render(request, 'learn/')
+            translation = request.POST.get('translations')
+            item = Translation.objects.get(translation_key=translation)
+            language_a = LanguageAForm(initial={
+                'value': item.language_a.value
+                })
+            language_b = LanguageBForm(initial={
+                'value': item.language_b.value
+                })
+            group_names = item.translation_group.all()
+            group = TranslationGroupForm(initial={
+                'groupName' : group_names[0],
+                })
+            translation_key = TranslationForm(initial={'key':item.pk})
+            verb = item.is_a_verb
+            if item.is_a_verb:
+                simplePast = SimplePastForm(initial={
+                    'spa_first_person_singular':item.tenses.simple_past.spa_first_person_singular,
+                    'spa_first_person_plural':item.tenses.simple_past.spa_first_person_plural,
+                    'spa_second_person_singular':item.tenses.simple_past.spa_second_person_singular,
+                    'spa_second_person_plural':item.tenses.simple_past.spa_second_person_plural,
+                    'spa_third_person_singular':item.tenses.simple_past.spa_third_person_singular,
+                    'spa_third_person_plural':item.tenses.simple_past.spa_third_person_plural,
+                    })
+                simplePresent = SimplePresentForm(initial={
+                    'spr_first_person_singular':item.tenses.simple_present.spr_first_person_singular,
+                    'spr_first_person_plural':item.tenses.simple_present.spr_first_person_plural,
+                    'spr_second_person_singular':item.tenses.simple_present.spr_second_person_singular,
+                    'spr_second_person_plural':item.tenses.simple_present.spr_second_person_plural,
+                    'spr_third_person_singular':item.tenses.simple_present.spr_third_person_singular,
+                    'spr_third_person_plural':item.tenses.simple_present.spr_third_person_plural,
+                    })
+                presentPerfect = PresentPerfectForm(initial={
+                    'pp_first_person_singular':item.tenses.present_perfect.pp_first_person_singular,
+                    'pp_first_person_plural':item.tenses.present_perfect.pp_first_person_plural,
+                    'pp_second_person_singular':item.tenses.present_perfect.pp_second_person_singular,
+                    'pp_second_person_plural':item.tenses.present_perfect.pp_second_person_plural,
+                    'pp_third_person_singular':item.tenses.present_perfect.pp_third_person_singular,
+                    'pp_third_person_plural':item.tenses.present_perfect.pp_third_person_plural,
+                    })
+                future = FutureForm(initial={
+                    'f_first_person_singular':item.tenses.future.f_first_person_singular,
+                    'f_first_person_plural':item.tenses.future.f_first_person_plural,
+                    'f_second_person_singular':item.tenses.future.f_second_person_singular,
+                    'f_second_person_plural':item.tenses.future.f_second_person_plural,
+                    'f_third_person_singular':item.tenses.future.f_third_person_singular,
+                    'f_third_person_plural':item.tenses.future.f_third_person_plural,
+                    })
+                conditional = ConditionalForm(initial={
+                    'c_first_person_singular':item.tenses.conditional.c_first_person_singular,
+                    'c_first_person_plural':item.tenses.conditional.c_first_person_plural,
+                    'c_second_person_singular':item.tenses.conditional.c_second_person_singular,
+                    'c_second_person_plural':item.tenses.conditional.c_second_person_plural,
+                    'c_third_person_singular':item.tenses.conditional.c_third_person_singular,
+                    'c_third_person_plural':item.tenses.conditional.c_third_person_plural,
+                    })
+            else:
+                simplePast = SimplePastForm()
+                simplePresent = SimplePresentForm()
+                presentPerfect = PresentPerfectForm()
+                future = FutureForm()
+                conditional = ConditionalForm()
+            
+            # TODO can try the TranslationSingleElementForm and the TranslationSearchElementForm
+            # TODO add the functionality for the Save button in the html template for the Translation objects
+        # Otherwise the forms have been edited and are ready to save 
+        else:
+            try:
+                entries = request.POST.getlist('value')
+                item_key = request.POST.get('key')
+                translation_object = Translation.objects.get(pk=item_key)
+                formA = LanguageAForm(request.POST)
+                if formA.is_valid():
+                    langA = LanguageA.objects.update_or_create(value=formA.data['value'])
+                formB = LanguageBForm(request.POST)
+                if formB.is_valid():
+                    langB = LanguageB.objects.update_or_create(value=formB.data['value'])
+                
+                # get the category for the translation
+                formG = TranslationGroupForm(request.POST)
+                if formG.is_valid():
+                    entryG = TranslationGroup.objects.update_or_create(groupName=formG.data['groupName'])
+                spr = SimplePresentForm(request.POST)
+                if spr.is_valid():
+                    sprm = SimplePresent.objects.update_or_create(
+                        spr_first_person_singular = spr.data['spr_first_person_singular'],
+                        spr_first_person_plural = spr.data['spr_first_person_plural'],
+                        spr_second_person_singular = spr.data['spr_second_person_singular'],
+                        spr_second_person_plural = spr.data['spr_second_person_plural'],
+                        spr_third_person_singular = spr.data['spr_third_person_singular'],
+                        spr_third_person_plural = spr.data['spr_third_person_plural'],
+                    )
+                spa = SimplePastForm(request.POST)
+                if spa.is_valid():
+                    spam = SimplePresent.objects.update_or_create(
+                        spa_first_person_singular = spa.data['spa_first_person_singular'],
+                        spa_first_person_plural = spa.data['spa_first_person_plural'],
+                        spa_second_person_singular = spa.data['spa_second_person_singular'],
+                        spa_second_person_plural = spa.data['spa_second_person_plural'],
+                        spa_third_person_singular = spa.data['spa_third_person_singular'],
+                        spa_third_person_plural = spa.data['spa_third_person_plural'],
+                    )
+                pp = PresentPerfectForm(request.POST)
+                if pp.is_valid():
+                    ppm = SimplePresent.objects.update_or_create(
+                        pp_first_person_singular = pp.data['pp_first_person_singular'],
+                        pp_first_person_plural = pp.data['pp_first_person_plural'],
+                        pp_second_person_singular = pp.data['pp_second_person_singular'],
+                        pp_second_person_plural = pp.data['pp_second_person_plural'],
+                        pp_third_person_singular = pp.data['pp_third_person_singular'],
+                        pp_third_person_plural = pp.data['pp_third_person_plural'],
+                    )
+                f = FutureForm(request.POST)
+                if f.is_valid():
+                    fm = SimplePresent.objects.update_or_create(
+                        f_first_person_singular = f.data['f_first_person_singular'],
+                        f_first_person_plural = f.data['f_first_person_plural'],
+                        f_second_person_singular = f.data['f_second_person_singular'],
+                        f_second_person_plural = f.data['f_second_person_plural'],
+                        f_third_person_singular = f.data['f_third_person_singular'],
+                        f_third_person_plural = f.data['f_third_person_plural'],
+                    )
+                c = ConditionalForm(request.POST)
+                if c.is_valid():
+                    cm = SimplePresent.objects.update_or_create(
+                        c_first_person_singular = c.data['c_first_person_singular'],
+                        c_first_person_plural = c.data['c_first_person_plural'],
+                        c_second_person_singular = c.data['c_second_person_singular'],
+                        c_second_person_plural = c.data['c_second_person_plural'],
+                        c_third_person_singular = c.data['c_third_person_singular'],
+                        c_third_person_plural = c.data['c_third_person_plural'],
+                    )
+                im = Infinitive(request.POST)
+                if im.is_valid():
+                    imm = SimplePresent.objects.update_or_create(
+                        im_first_person_singular = im.data['im_first_person_singular'],
+                        im_first_person_plural = im.data['im_first_person_plural'],
+                        im_second_person_singular = im.data['im_second_person_singular'],
+                        im_second_person_plural = im.data['im_second_person_plural'],
+                        im_third_person_singular = im.data['im_third_person_singular'],
+                        im_third_person_plural = im.data['im_third_person_plural'],
+                    )
+                # if it doesnt exist create it
+                if translation_object.is_a_verb:
+                    tenses = Verbs.objects.update_or_create(infinitive = im, simple_present=sprm, simple_past=spam,
+                        present_perfect=ppm, future=fm, conditional=cm)
+                    translation = Translation.objects.update_or_create(language_a=entryA, language_b=entryB, creation_date=timezone.now(), translation_key=entryA.value + '---' + entryB.value, is_a_verb=True, tenses=verb_tenses)
+                else:
+                    translation = Translation.objects.update_or_create(language_a=entryA, language_b=entryB, creation_date=timezone.now*(), translation_key=entryA.value + '---' + entryB.value)
+            except:
+                pass
+            return HttpResponseRedirect(reverse('index'),{
+                'recent' : recent_translations(),
+                'status' : status,
+                })
+
+        return render(request, 'learn/edit_translation.html',
+                      {
+                          'key' : translation_key,
+                          'verb' : verb,
+                          'language_a' : language_a,
+                          'language_b' : language_b,
+                          'group' : group,
+                          'SimplePresent' : simplePresent,
+                          'SimplePast' : simplePast,
+                          'PresentPerfect' : presentPerfect,
+                          'Future' : future,
+                          'Conditional' : conditional,
+                          }
+                      )
+    # else render the edit initial form
     return render(request, 'learn/edit.html',
         {
             'by_groups' : TranslationListForm(request.GET),

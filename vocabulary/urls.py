@@ -10,4 +10,5 @@ urlpatterns = [
         path('test/',views.Test.as_view,name='test'),
         path('delete/',views.delete,name='delete'),
         path('group/',views.group,name='group'),
+        path('edit/',views.edit,name='edit'),
         ]
